@@ -14,40 +14,47 @@ struct Task {
     int arrival_time;
 };
 
-// 1. 0/1 Knapsack Solver via Dynamic Programming (CPU-only)
-vector<Task> solve_dp(const vector<Task>& tasks, int capacity) {
+// 1. 0/1 Knapsack Solver via Dynamic Programming (CPU and RAM)
+vector<Task> solve_dp(const vector<Task>& tasks, int cpu_capacity, int ram_capacity) {
     int n = tasks.size();
-    if (n == 0 || capacity <= 0) return {};
+    if (n == 0 || cpu_capacity <= 0 || ram_capacity <= 0) return {};
 
     vector<Task> valid_tasks;
     for (const auto& t : tasks) {
-        if (t.cpu <= capacity) {
+        if (t.cpu <= cpu_capacity && t.ram <= ram_capacity) {
             valid_tasks.push_back(t);
         }
     }
     n = valid_tasks.size();
     if (n == 0) return {};
 
-    vector<vector<double>> dp(n + 1, vector<double>(capacity + 1, 0.0));
+    vector<vector<vector<double>>> dp(n + 1, vector<vector<double>>(cpu_capacity + 1, vector<double>(ram_capacity + 1, 0.0)));
 
     for (int i = 1; i <= n; ++i) {
-        int w = valid_tasks[i - 1].cpu;
+        int w_cpu = valid_tasks[i - 1].cpu;
+        int w_ram = valid_tasks[i - 1].ram;
         double val = valid_tasks[i - 1].value;
-        for (int j = 0; j <= capacity; ++j) {
-            if (w <= j) {
-                dp[i][j] = max(dp[i - 1][j], dp[i - 1][j - w] + val);
-            } else {
-                dp[i][j] = dp[i - 1][j];
+        for (int c = 0; c <= cpu_capacity; ++c) {
+            for (int r = 0; r <= ram_capacity; ++r) {
+                // Recurrence: if current task fits in both CPU and RAM, take max of including or excluding it
+                if (w_cpu <= c && w_ram <= r) {
+                    dp[i][c][r] = max(dp[i - 1][c][r], dp[i - 1][c - w_cpu][r - w_ram] + val);
+                } else {
+                    dp[i][c][r] = dp[i - 1][c][r];
+                }
             }
         }
     }
 
     vector<Task> selected;
-    int w = capacity;
+    int c = cpu_capacity;
+    int r = ram_capacity;
+    // Backtracking: if value differs from the previous item's value at current capacities, item was selected
     for (int i = n; i > 0; --i) {
-        if (dp[i][w] != dp[i - 1][w]) {
+        if (dp[i][c][r] != dp[i - 1][c][r]) {
             selected.push_back(valid_tasks[i - 1]);
-            w -= valid_tasks[i - 1].cpu;
+            c -= valid_tasks[i - 1].cpu;
+            r -= valid_tasks[i - 1].ram;
         }
     }
     reverse(selected.begin(), selected.end());
@@ -55,8 +62,8 @@ vector<Task> solve_dp(const vector<Task>& tasks, int capacity) {
 }
 
 // 2. First-Come, First-Served (FCFS)
-vector<Task> solve_fcfs(vector<Task> tasks, int capacity) {
-    if (capacity <= 0 || tasks.empty()) return {};
+vector<Task> solve_fcfs(vector<Task> tasks, int cpu_capacity, int ram_capacity) {
+    if (cpu_capacity <= 0 || ram_capacity <= 0 || tasks.empty()) return {};
 
     sort(tasks.begin(), tasks.end(), [](const Task& a, const Task& b) {
         if (a.arrival_time != b.arrival_time) {
@@ -67,18 +74,20 @@ vector<Task> solve_fcfs(vector<Task> tasks, int capacity) {
 
     vector<Task> selected;
     int current_cpu = 0;
+    int current_ram = 0;
     for (const auto& t : tasks) {
-        if (current_cpu + t.cpu <= capacity) {
+        if (current_cpu + t.cpu <= cpu_capacity && current_ram + t.ram <= ram_capacity) {
             selected.push_back(t);
             current_cpu += t.cpu;
+            current_ram += t.ram;
         }
     }
     return selected;
 }
 
 // 3. Shortest Job First (SJF)
-vector<Task> solve_sjf(vector<Task> tasks, int capacity) {
-    if (capacity <= 0 || tasks.empty()) return {};
+vector<Task> solve_sjf(vector<Task> tasks, int cpu_capacity, int ram_capacity) {
+    if (cpu_capacity <= 0 || ram_capacity <= 0 || tasks.empty()) return {};
 
     sort(tasks.begin(), tasks.end(), [](const Task& a, const Task& b) {
         if (a.duration != b.duration) {
@@ -89,18 +98,20 @@ vector<Task> solve_sjf(vector<Task> tasks, int capacity) {
 
     vector<Task> selected;
     int current_cpu = 0;
+    int current_ram = 0;
     for (const auto& t : tasks) {
-        if (current_cpu + t.cpu <= capacity) {
+        if (current_cpu + t.cpu <= cpu_capacity && current_ram + t.ram <= ram_capacity) {
             selected.push_back(t);
             current_cpu += t.cpu;
+            current_ram += t.ram;
         }
     }
     return selected;
 }
 
 // 4. Round Robin (RR)
-vector<Task> solve_rr(vector<Task> tasks, int capacity) {
-    if (capacity <= 0 || tasks.empty()) return {};
+vector<Task> solve_rr(vector<Task> tasks, int cpu_capacity, int ram_capacity) {
+    if (cpu_capacity <= 0 || ram_capacity <= 0 || tasks.empty()) return {};
 
     sort(tasks.begin(), tasks.end(), [](const Task& a, const Task& b) {
         return a.arrival_time < b.arrival_time;
@@ -108,6 +119,7 @@ vector<Task> solve_rr(vector<Task> tasks, int capacity) {
 
     vector<Task> selected;
     int current_cpu = 0;
+    int current_ram = 0;
     vector<bool> visited(tasks.size(), false);
     size_t allocated_count = 0;
 
@@ -118,9 +130,10 @@ vector<Task> solve_rr(vector<Task> tasks, int capacity) {
             if (!visited[i]) {
                 visited[i] = true;
                 allocated_count++;
-                if (current_cpu + tasks[i].cpu <= capacity) {
+                if (current_cpu + tasks[i].cpu <= cpu_capacity && current_ram + tasks[i].ram <= ram_capacity) {
                     selected.push_back(tasks[i]);
                     current_cpu += tasks[i].cpu;
+                    current_ram += tasks[i].ram;
                     progress = true;
                 }
             }
@@ -129,9 +142,10 @@ vector<Task> solve_rr(vector<Task> tasks, int capacity) {
             if (!visited[i]) {
                 visited[i] = true;
                 allocated_count++;
-                if (current_cpu + tasks[i].cpu <= capacity) {
+                if (current_cpu + tasks[i].cpu <= cpu_capacity && current_ram + tasks[i].ram <= ram_capacity) {
                     selected.push_back(tasks[i]);
                     current_cpu += tasks[i].cpu;
+                    current_ram += tasks[i].ram;
                     progress = true;
                 }
             }
@@ -161,13 +175,13 @@ int main() {
 
     vector<Task> selected;
     if (algo == "dp") {
-        selected = solve_dp(tasks, cpu_cap);
+        selected = solve_dp(tasks, cpu_cap, ram_cap);
     } else if (algo == "fcfs") {
-        selected = solve_fcfs(tasks, cpu_cap);
+        selected = solve_fcfs(tasks, cpu_cap, ram_cap);
     } else if (algo == "sjf") {
-        selected = solve_sjf(tasks, cpu_cap);
+        selected = solve_sjf(tasks, cpu_cap, ram_cap);
     } else if (algo == "rr") {
-        selected = solve_rr(tasks, cpu_cap);
+        selected = solve_rr(tasks, cpu_cap, ram_cap);
     } else {
         cerr << "Unknown algorithm: " << algo << endl;
         return 1;
