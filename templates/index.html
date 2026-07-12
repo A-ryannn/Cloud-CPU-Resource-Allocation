@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cloud Resource Allocation Simulator</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg-color: #0b0f19;
+            --card-bg: rgba(30, 41, 59, 0.7);
+            --card-border: rgba(255, 255, 255, 0.08);
+            --primary: #38bdf8;
+            --primary-hover: #0ea5e9;
+            --primary-glow: rgba(56, 189, 248, 0.35);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --success: #10b981;
+            --success-bg: rgba(16, 185, 129, 0.15);
+            --info: #0284c7;
+            --info-bg: rgba(2, 132, 199, 0.15);
+            --font-display: 'Outfit', sans-serif;
+            --font-body: 'Inter', sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(15, 23, 42, 0.9) 0, transparent 50%),
+                radial-gradient(at 100% 0%, rgba(2, 132, 199, 0.15) 0, transparent 50%);
+            color: var(--text-main);
+            font-family: var(--font-body);
+            min-height: 100vh;
+            line-height: 1.5;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* Header Styling */
+        header {
+            margin-bottom: 2.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--card-border);
+            padding-bottom: 1.5rem;
+        }
+
+        .header-title-group h1 {
+            font-family: var(--font-display);
+            font-size: 2.2rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            background: linear-gradient(135deg, #ffffff 0%, #a5f3fc 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .header-title-group p {
+            color: var(--text-muted);
+            margin-top: 0.25rem;
+            font-size: 0.95rem;
+        }
+
+        /* Layout Grid */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 380px 1fr;
+            gap: 2rem;
+            align-items: start;
+        }
+
+        /* Card Base Styles */
+        .glass-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+            padding: 1.75rem;
+        }
+
+        /* Sidebar Control Panel */
+        .control-panel h2 {
+            font-family: var(--font-display);
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .control-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .control-group label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+            color: var(--text-muted);
+        }
+
+        .slider-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        input[type="range"] {
+            flex-grow: 1;
+            accent-color: var(--primary);
+            cursor: pointer;
+            height: 6px;
+            border-radius: 3px;
+        }
+
+        .slider-val {
+            font-family: var(--font-display);
+            font-size: 1rem;
+            font-weight: 600;
+            min-width: 3.5rem;
+            text-align: right;
+            color: var(--text-main);
+            background: rgba(255, 255, 255, 0.05);
+            padding: 0.25rem 0.5rem;
+            border-radius: 6px;
+            border: 1px solid var(--card-border);
+        }
+
+        .btn-primary {
+            width: 100%;
+            background: linear-gradient(135deg, var(--primary) 0%, #0284c7 100%);
+            border: none;
+            border-radius: 10px;
+            color: #0b0f19;
+            cursor: pointer;
+            font-family: var(--font-display);
+            font-size: 1rem;
+            font-weight: 700;
+            padding: 0.85rem;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 14px 0 var(--primary-glow);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px 0 var(--primary-glow);
+            filter: brightness(1.1);
+        }
+
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+
+        /* Info Banners */
+        .banners-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .banner {
+            border-radius: 10px;
+            padding: 0.75rem 1.25rem;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .banner-info {
+            background-color: var(--info-bg);
+            border: 1px solid rgba(2, 132, 199, 0.2);
+            color: #7dd3fc;
+        }
+
+        .banner-success {
+            background-color: var(--success-bg);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            color: #6ee7b7;
+        }
+
+        /* Results Cards Grid */
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .result-card {
+            background: rgba(30, 41, 59, 0.45);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 1.25rem;
+            text-align: center;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .result-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: var(--text-muted);
+        }
+
+        .result-card.card-0::before { background: #10b981; }
+        .result-card.card-1::before { background: #3b82f6; }
+        .result-card.card-2::before { background: #f59e0b; }
+        .result-card.card-3::before { background: #8b5cf6; }
+
+        .result-card:hover {
+            transform: translateY(-4px);
+            background: rgba(30, 41, 59, 0.6);
+            border-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .card-algo-name {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.5rem;
+        }
+
+        .card-value {
+            font-family: var(--font-display);
+            font-size: 2.2rem;
+            font-weight: 700;
+            color: var(--primary);
+            line-height: 1.1;
+            margin-bottom: 0.5rem;
+        }
+
+        .card-meta-line {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-top: 0.25rem;
+        }
+
+        .card-meta-line strong {
+            color: var(--text-main);
+        }
+
+        /* Charts Layout */
+        .charts-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .chart-card {
+            min-height: 380px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chart-card h3 {
+            font-family: var(--font-display);
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 1.25rem;
+            border-left: 3px solid var(--primary);
+            padding-left: 0.6rem;
+        }
+
+        .chart-container {
+            position: relative;
+            flex-grow: 1;
+            height: 280px;
+        }
+
+        /* Data Table Styling */
+        .table-card h3 {
+            font-family: var(--font-display);
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 1.25rem;
+        }
+
+        .table-responsive {
+            width: 100%;
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 0.9rem;
+        }
+
+        th {
+            background-color: rgba(255, 255, 255, 0.02);
+            color: var(--text-muted);
+            font-weight: 600;
+            padding: 1rem;
+            border-bottom: 1px solid var(--card-border);
+        }
+
+        td {
+            padding: 1rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+            color: var(--text-main);
+        }
+
+        tr:hover td {
+            background-color: rgba(255, 255, 255, 0.01);
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+            .cards-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+            .charts-row {
+                grid-template-columns: 1fr;
+            }
+        }
+        @media (max-width: 640px) {
+            .cards-grid {
+                grid-template-columns: 1fr;
+            }
+            .banners-container {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <div class="header-title-group">
+            <h1>☁️ Cloud Resource Allocation Simulator</h1>
+            <p>Static optimization comparison using C++ allocators called from a Python Flask engine.</p>
+        </div>
+    </header>
+
+    <div class="dashboard-grid">
+        <!-- Sidebar Controls -->
+        <aside class="glass-card control-panel">
+            <h2>⚙️ Config Panel</h2>
+            
+            <div class="control-group">
+                <label for="cpu-input">Host CPU Cores</label>
+                <div class="slider-wrapper">
+                    <input type="range" id="cpu-input" min="16" max="256" step="16" value="64">
+                    <span class="slider-val" id="cpu-val">64</span>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label for="ram-input">Host RAM (GB)</label>
+                <div class="slider-wrapper">
+                    <input type="range" id="ram-input" min="32" max="512" step="32" value="128">
+                    <span class="slider-val" id="ram-val">128</span>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label for="tasks-input">Number of Tasks</label>
+                <div class="slider-wrapper">
+                    <input type="range" id="tasks-input" min="10" max="100" step="10" value="30">
+                    <span class="slider-val" id="tasks-val">30</span>
+                </div>
+            </div>
+
+            <button class="btn-primary" id="run-btn">
+                <span>🚀 Run Simulation</span>
+            </button>
+        </aside>
+
+        <!-- Main Dashboard View -->
+        <main>
+            <!-- Banners -->
+            <div class="banners-container">
+                <div class="banner banner-info" id="workload-banner">
+                    <span>📋 Workload: 30 tasks waiting to allocate.</span>
+                </div>
+                <div class="banner banner-success" id="host-banner">
+                    <span>⚡ Host: 64 CPU Cores | 128 GB RAM</span>
+                </div>
+            </div>
+
+            <!-- Metric Cards -->
+            <div class="cards-grid" id="cards-container">
+                <!-- Dynamically populated -->
+                <div class="result-card card-0">
+                    <div class="card-algo-name">Loading...</div>
+                    <div class="card-value">-</div>
+                </div>
+                <div class="result-card card-1">
+                    <div class="card-algo-name">Loading...</div>
+                    <div class="card-value">-</div>
+                </div>
+                <div class="result-card card-2">
+                    <div class="card-algo-name">Loading...</div>
+                    <div class="card-value">-</div>
+                </div>
+                <div class="result-card card-3">
+                    <div class="card-algo-name">Loading...</div>
+                    <div class="card-value">-</div>
+                </div>
+            </div>
+
+            <!-- Charts Row -->
+            <div class="charts-row">
+                <div class="glass-card chart-card">
+                    <h3>Allocation Efficiency (Value Retained %)</h3>
+                    <div class="chart-container">
+                        <canvas id="efficiency-chart"></canvas>
+                    </div>
+                </div>
+                <div class="glass-card chart-card">
+                    <h3>Host Resource Utilization (%)</h3>
+                    <div class="chart-container">
+                        <canvas id="utilization-chart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Detailed Breakdown Table -->
+            <div class="glass-card table-card">
+                <h3>Detailed Allocation Summary</h3>
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Algorithm</th>
+                                <th>Allocated Tasks</th>
+                                <th>Value Retained</th>
+                                <th>Value Efficiency</th>
+                                <th>CPU Util</th>
+                                <th>RAM Util</th>
+                                <th>Run Duration</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-body">
+                            <!-- Dynamically populated -->
+                            <tr>
+                                <td colspan="7" style="text-align:center; color:var(--text-muted);">Fetching initial simulation data...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+
+<script>
+    // Elements
+    const cpuInput = document.getElementById('cpu-input');
+    const cpuVal = document.getElementById('cpu-val');
+    const ramInput = document.getElementById('ram-input');
+    const ramVal = document.getElementById('ram-val');
+    const tasksInput = document.getElementById('tasks-input');
+    const tasksVal = document.getElementById('tasks-val');
+    const runBtn = document.getElementById('run-btn');
+    
+    const workloadBanner = document.getElementById('workload-banner');
+    const hostBanner = document.getElementById('host-banner');
+    const cardsContainer = document.getElementById('cards-container');
+    const tableBody = document.getElementById('table-body');
+
+    // Sync input sliders values
+    cpuInput.addEventListener('input', () => { cpuVal.textContent = cpuInput.value; });
+    ramInput.addEventListener('input', () => { ramVal.textContent = ramInput.value; });
+    tasksInput.addEventListener('input', () => { tasksVal.textContent = tasksInput.value; });
+
+    // Chart.js instances
+    let efficiencyChartInstance = null;
+    let utilizationChartInstance = null;
+
+    // Fetch and Run Simulation
+    async function executeSimulation() {
+        const cpu = cpuInput.value;
+        const ram = ramInput.value;
+        const tasks = tasksInput.value;
+
+        // Visual update on button
+        runBtn.disabled = true;
+        runBtn.innerHTML = `<span>⏳ Simulating...</span>`;
+
+        try {
+            const response = await fetch(`/api/simulate?cpu=${cpu}&ram=${ram}&tasks=${tasks}`);
+            const data = await response.json();
+
+            if (!data.success) {
+                alert(`Error: ${data.error}`);
+                return;
+            }
+
+            // Update Info banners
+            workloadBanner.innerHTML = `<span>📋 Workload: ${data.task_count} tasks waiting to allocate.</span>`;
+            hostBanner.innerHTML = `<span>⚡ Host: ${data.host.cpu} CPU Cores | ${data.host.ram} GB RAM</span>`;
+
+            // Populate summary cards
+            populateCards(data.results);
+
+            // Populate table details
+            populateTable(data.results);
+
+            // Render Charts
+            renderEfficiencyChart(data.results);
+            renderUtilizationChart(data.results);
+
+        } catch (err) {
+            console.error(err);
+            alert("Connection error while running the simulation.");
+        } finally {
+            runBtn.disabled = false;
+            runBtn.innerHTML = `<span>🚀 Run Simulation</span>`;
+        }
+    }
+
+    // Populate Results Cards
+    function populateCards(results) {
+        cardsContainer.innerHTML = '';
+        results.forEach((res, index) => {
+            const card = document.createElement('div');
+            card.className = `result-card card-${index}`;
+            card.innerHTML = `
+                <div class="card-algo-name">${res.algorithm}</div>
+                <div class="card-value">${res.value_allocated.toLocaleString()}</div>
+                <div class="card-meta-line">Efficiency: <strong>${res.value_efficiency_pct.toFixed(1)}%</strong></div>
+                <div class="card-meta-line">CPU: <strong>${res.cpu_utilization.toFixed(1)}%</strong> | RAM: <strong>${res.ram_utilization.toFixed(1)}%</strong></div>
+            `;
+            cardsContainer.appendChild(card);
+        });
+    }
+
+    // Populate Detailed Table
+    function populateTable(results) {
+        tableBody.innerHTML = '';
+        results.forEach(res => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td style="font-weight: 600;">${res.algorithm}</td>
+                <td>${res.tasks_allocated} / ${res.tasks_total} (${res.allocation_rate_pct.toFixed(1)}%)</td>
+                <td style="color: var(--primary); font-weight: 500;">${res.value_allocated.toLocaleString()}</td>
+                <td style="font-weight: 600; color: ${res.value_efficiency_pct > 20 ? 'var(--success)' : '#eab308'};">
+                    ${res.value_efficiency_pct.toFixed(1)}%
+                </td>
+                <td>${res.cpu_utilization.toFixed(1)}%</td>
+                <td>${res.ram_utilization.toFixed(1)}%</td>
+                <td style="font-family: monospace;">${res.runtime_ms.toFixed(2)} ms</td>
+            `;
+            tableBody.appendChild(row);
+        });
+    }
+
+    // Render Value Efficiency Chart (Horizontal Bar)
+    function renderEfficiencyChart(results) {
+        const labels = results.map(r => r.algorithm);
+        const dataValues = results.map(r => r.value_efficiency_pct);
+
+        if (efficiencyChartInstance) {
+            efficiencyChartInstance.destroy();
+        }
+
+        const ctx = document.getElementById('efficiency-chart').getContext('2d');
+        efficiencyChartInstance = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Value Efficiency (%)',
+                    data: dataValues,
+                    backgroundColor: [
+                        'rgba(16, 185, 129, 0.75)',
+                        'rgba(59, 130, 246, 0.75)',
+                        'rgba(245, 158, 11, 0.75)',
+                        'rgba(139, 92, 246, 0.75)'
+                    ],
+                    borderColor: [
+                        '#10b981',
+                        '#3b82f6',
+                        '#f59e0b',
+                        '#8b5cf6'
+                    ],
+                    borderWidth: 1.5,
+                    borderRadius: 6
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    x: {
+                        grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                        ticks: { color: '#94a3b8' },
+                        max: 100
+                    },
+                    y: {
+                        grid: { display: false },
+                        ticks: { color: '#f8fafc', font: { family: 'Outfit', size: 11 } }
+                    }
+                }
+            }
+        });
+    }
+
+    // Render Resource Utilization Chart (Grouped Vertical Bar)
+    function renderUtilizationChart(results) {
+        const labels = results.map(r => r.algorithm);
+        const cpuData = results.map(r => r.cpu_utilization);
+        const ramData = results.map(r => r.ram_utilization);
+
+        if (utilizationChartInstance) {
+            utilizationChartInstance.destroy();
+        }
+
+        const ctx = document.getElementById('utilization-chart').getContext('2d');
+        utilizationChartInstance = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'CPU Utilization',
+                        data: cpuData,
+                        backgroundColor: 'rgba(56, 189, 248, 0.75)',
+                        borderColor: '#38bdf8',
+                        borderWidth: 1.5,
+                        borderRadius: 4
+                    },
+                    {
+                        label: 'RAM Utilization',
+                        data: ramData,
+                        backgroundColor: 'rgba(168, 85, 247, 0.75)',
+                        borderColor: '#a855f7',
+                        borderWidth: 1.5,
+                        borderRadius: 4
+                    }
+                ]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        labels: { color: '#f8fafc', font: { family: 'Outfit' } }
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                        ticks: { color: '#94a3b8' },
+                        max: 100
+                    },
+                    y: {
+                        display: false
+                    }
+                }
+            }
+        });
+    }
+
+    // Trigger run on click
+    runBtn.addEventListener('click', executeSimulation);
+
+    // Run once on load
+    window.addEventListener('DOMContentLoaded', executeSimulation);
+</script>
+
+</body>
+</html>
